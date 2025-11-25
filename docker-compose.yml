@@ -1,0 +1,92 @@
+version: "3.8"
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    hostname: gitlab
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "2222:22"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${GITLAB_EXTERNAL_URL}'
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    networks:
+      - ci_net
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    environment:
+      GITLAB_URL: ${GITLAB_URL}
+      CI_SERVER_URL: ${GITLAB_URL}
+      REGISTRATION_TOKEN: ${GITLAB_RUNNER_REGISTRATION_TOKEN}
+    volumes:
+      - gitlab_runner_config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["bash", "-c", "gitlab-runner run & tail -f /dev/null"]
+    networks:
+      - ci_net
+
+  sonarqube:
+    image: sonarqube:latest
+    container_name: sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      SONARQUBE_URL: ${SONARQUBE_URL}
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - ci_net
+
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: nexus
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      NEXUS_URL: ${NEXUS_URL}
+    volumes:
+      - nexus_data:/nexus-data
+    networks:
+      - ci_net
+
+  registry:
+    image: registry:2
+    container_name: registry
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      LOCAL_REGISTRY_URL: ${LOCAL_REGISTRY_URL}
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - ci_net
+
+networks:
+  ci_net:
+    driver: bridge
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
+  gitlab_runner_config:
+  sonarqube_data:
+  sonarqube_extensions:
+  nexus_data:
+  registry_data:
