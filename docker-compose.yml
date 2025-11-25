@@ -25,6 +25,8 @@ services:
     restart: unless-stopped
     depends_on:
       - gitlab
+    entrypoint:
+      - gitlab-runner
     environment:
       GITLAB_URL: ${GITLAB_URL}
       CI_SERVER_URL: ${GITLAB_URL}
@@ -32,7 +34,10 @@ services:
     volumes:
       - gitlab_runner_config:/etc/gitlab-runner
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["bash", "-c", "gitlab-runner run & tail -f /dev/null"]
+    command:
+      - run
+      - "--user=gitlab-runner"
+      - "--working-directory=/home/gitlab-runner"
     networks:
       - ci_net
 
