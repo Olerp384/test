@@ -11,7 +11,7 @@ services:
       - "2222:22"
     environment:
       GITLAB_OMNIBUS_CONFIG: |
-        external_url '${GITLAB_EXTERNAL_URL}'
+        external_url '${GITLAB_EXTERNAL_URL:-http://localhost:8080}'
     volumes:
       - gitlab_config:/etc/gitlab
       - gitlab_logs:/var/log/gitlab
@@ -25,8 +25,6 @@ services:
     restart: unless-stopped
     depends_on:
       - gitlab
-    entrypoint:
-      - gitlab-runner
     environment:
       GITLAB_URL: ${GITLAB_URL}
       CI_SERVER_URL: ${GITLAB_URL}
@@ -34,10 +32,13 @@ services:
     volumes:
       - gitlab_runner_config:/etc/gitlab-runner
       - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - run
-      - "--user=gitlab-runner"
-      - "--working-directory=/home/gitlab-runner"
+      - |
+        if [ ! -f /etc/gitlab-runner/config.toml ]; then
+          touch /etc/gitlab-runner/config.toml;
+        fi
+        exec gitlab-runner run --user=gitlab-runner --working-directory=/home/gitlab-runner --config /etc/gitlab-runner/config.toml
     networks:
       - ci_net
 
